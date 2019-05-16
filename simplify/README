@@ -1,0 +1,3 @@
+Files to include:
+admin.py      __init__.py  models.py    tests.py  views.py
+functions.py  migrations   __pycache__  urls.py
