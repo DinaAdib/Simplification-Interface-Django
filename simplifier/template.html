@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../../../favicon.ico">
+
+    <title>Simplify it</title>
+{% load static %}
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/additional.css' %}">
+
+  </head>
+
+  <body>
+
+
+    <main role="main">
+<div>
+	      <div class="jumbotron bg">
+		  <h1 class="display-3 text-center">Language Tool</h1>
+		 
+		</div>
+	      </div>
+
+	<form   method="GET" role="form" action="/">
+	      <!--    JUMBOTRON  -->
+		
+		
+	    <!--Text areas-->
+		<div class="container">
+
+			<textarea id="text_input" rows="13" cols="55" value="{{text_input}}" name="text_input" placeholder="Enter Text: ">{{text_input}}</textarea>
+
+			<textarea id="text_output" rows="13" cols="55" value="{{text_output}}" name="text_output">{{text_output}}</textarea>
+		</div>
+	      <!--    End of textareas -->
+		
+	      
+		<div class="container">
+		  
+		<!--    Example row of columns  -->
+	       
+		<div class="row">
+		  <div class="col-md-4">
+			<input type="submit" class="btn btn-primary" value="Summarize" name="summarizebtn">
+		 </div>
+		 
+		  <div class="col-md-4">
+			<input type="submit" class="btn btn-primary" value="Lexical Simplification" name="LSbtn">
+		  </div>
+		    
+		    <div class="col-md-4">
+			<input type="submit" class="btn btn-primary" value="Sentence Simplification" name="SSbtn">
+		  </div>
+		  
+		  </div>
+		  </div> <!-- /container -->
+
+
+
+	  </form>
+
+
+
+    </main>
+
+    <footer class="container">
+      <p>&copy; Company 2017-2018</p>
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+
+  </body>
+</html>
