@@ -1,0 +1,4 @@
+Files and Folders in simplifier:
+Features      initializeLS.py  __pycache__  Substitution_Generator.py  wsgi.py
+files         __init__.py      ranker.py    templates
+functions.py  input.txt        settings.py  urls.py
