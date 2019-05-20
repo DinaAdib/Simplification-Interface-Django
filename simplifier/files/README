@@ -3,4 +3,4 @@ BenchLS.test.txt                       lexicon.tsv
 BenchLS.txt                            newsela.lm
 BenchPS.txt                            subs_ranking_model_3.pkl
 GoogleNews-vectors-negative300.bin.gz  substitutions.pkl
-l2ena_error.txt                        wikiFreq.pkl
+mythesaurus.pkl                        wikiFreq.pkl
