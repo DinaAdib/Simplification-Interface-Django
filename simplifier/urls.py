@@ -15,10 +15,9 @@ Including another URLconf
 """
 from django.conf.urls import include, url
 from django.contrib import admin
-
+from simplify import views
 
 urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
-    url('', include('simplify.urls')),
-    url('/summarize', include('simplify.urls')),
+    url(r'^admin/', admin.site.urls),
+    url('', views.index),
 ]

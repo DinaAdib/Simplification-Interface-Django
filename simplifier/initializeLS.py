@@ -40,7 +40,8 @@ class Initializer:
         self.threegram_model = NgramModel(DIRECTORY + "newsela.lm", 1, 1)
         self.syllable_dict = pyphen.Pyphen(lang='en')
         self.wiki_frequency = WikiFrequency()
-        # self.word2vec = Word2Vec()
+        self.mythesaurus = load_obj(DIRECTORY+"mythesaurus")
+        self.word2vec = Word2Vec()
         elapsed_time = time.time() - start
         print("loaded models in ", elapsed_time)
 
