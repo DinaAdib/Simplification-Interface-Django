@@ -10,6 +10,7 @@ import numpy as np
 import time
 from simplifier.settings import initializer
 from meowls import *
+from django.views.decorators.csrf import csrf_protect
 
 class CommentForm(forms.Form):
     name = forms.CharField(initial='class')
@@ -28,13 +29,14 @@ def index(request):
 
 
     lines = ""
-    Sentence_Simplifier = request.GET.get('SSbtn')
-    Sentence_Summarizer = request.GET.get('summarizebtn')
-    Lexical_Simplifier = request.GET.get('LSbtn')
+    Sentence_Simplifier = request.POST.get('SSbtn')
+    print(Sentence_Simplifier)
+    Sentence_Summarizer = request.POST.get('summarizebtn')
+    Lexical_Simplifier = request.POST.get('LSbtn')
 
     if Sentence_Simplifier or Sentence_Summarizer or Lexical_Simplifier:
 
-        text_input = request.GET.get('text_input')
+        text_input = request.POST.get('text_input')
         if text_input is not None:
             if Sentence_Simplifier:
                 # execute this code
@@ -53,7 +55,7 @@ def index(request):
 
             elif Sentence_Summarizer:
 
-                text_input = request.GET.get('text_input')
+                text_input = request.POST.get('text_input')
                 if text_input is not None:
                     f = open('model/input.txt', 'w')
                     f.write(text_input)
@@ -71,7 +73,7 @@ def index(request):
                 syllable_dict = initializer.syllable_dict
                 wiki_frequency = initializer.wiki_frequency
                 # word2vec = initializer.word2vec
-                text_input = request.GET.get('text_input')
+                text_input = request.POST.get('text_input')
                 print("LS input")
                 if text_input is not None:
                     f = open('model/input.txt', 'w')
