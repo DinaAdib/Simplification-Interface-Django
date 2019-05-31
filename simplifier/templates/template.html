@@ -19,21 +19,32 @@
 
 
     <main role="main">
+
+      <!--<div style='background-color: url("/static/background.jpg"); background-repeat: no-repeat;background-size: 100% 100%; padding:12px; margin-bottom:20px'>-->
+    <div class="container">
+        <div class="row" style="background-color:#ffad11; padding:12px; margin-bottom:20px;">
+
+            <div class="col-md-2">
+
+                <img src="{% static 'SumSimLogo.png' %}" style='height:150px; width:150px; margin-left:50px'/>
+            </div>
+            <div class="col-9" style="margin-left:50px">
+                 <h1 style="margin-top:50px;"> <strong>Meet your reader-friendly website</strong></h1>
+                <p>You can summarize, simplify words or sentences for any given text.</p>
+            </div>
+        </div>
+    </div>
+	      <!--</div>-->
 <div>
-	      <div class="jumbotron bg">
-		  <h1 class="display-3 text-center">Language Tool</h1>
-		 
-		</div>
-	      </div>
 
-	<form   method="POST" role="form" action="/">
+
+	<form  class="container"  method="POST" role="form" action="/" enctype="multipart/form-data">
 {% csrf_token %}
-	      <!--    JUMBOTRON  -->
-		
-		
-	    <!--Text areas-->
-		<div class="container">
 
+
+
+	    <!--Text areas-->
+		<div>
 			<textarea id="text_input" rows="13" cols="55" value="{{text_input}}" name="text_input" placeholder="Enter Text: ">{{text_input}}</textarea>
 
 			<textarea id="text_output" rows="13" cols="55" value="{{text_output}}" name="text_output">{{text_output}}</textarea>
@@ -41,7 +52,7 @@
 	      <!--    End of textareas -->
 		
 	      
-		<div class="container">
+		<div>
 		  
 		<!--    Example row of columns  -->
 	       
@@ -51,26 +62,41 @@
 		 </div>
 		 
 		  <div class="col-md-4">
-			<input type="submit" class="btn btn-primary" value="Lexical Simplification" name="LSbtn">
+			<input type="submit" class="btn btn-primary" value="Simplify words" name="LSbtn">
 		  </div>
 		    
 		    <div class="col-md-4">
-			<input type="submit" class="btn btn-primary" value="Sentence Simplification" name="SSbtn">
+			<input type="submit" class="btn btn-primary" value="Simplify structure" name="SSbtn">
 		  </div>
+
+		    <!--<div class="col-md-3">-->
+			<!--<input type="submit" class="btn btn-primary" value="Simplify" name="simplifybtn">-->
+		  <!--</div>-->
+
 		  
 		  </div>
+
+
+			<br>
+			<input type="file" name="myfile">
+		<input class="btn btn-success"  type="submit" value="Upload" name="Upload">
+
+            <div class="col-md-3" style="float:right">
+			<input type="submit" class="btn btn-secondary" value="Clear all" name="clearbtn">
+		  </div>
 		  </div> <!-- /container -->
-
-
-
-	  </form>
+    </form>
+</div>
+  <!--{% if uploaded_file_url %}-->
+    <!--<p>File uploaded at: <a href="{{ uploaded_file_url }}">{{ uploaded_file_url }}</a></p>-->
+  <!--{% endif %}-->
 
 
 
     </main>
 
-    <footer class="container">
-      <p>&copy; Company 2017-2018</p>
+    <footer class="container" style="margin-top:70px">
+      <p>&copy; SumSim 2018-2019</p>
     </footer>
 
     <!-- Bootstrap core JavaScript
