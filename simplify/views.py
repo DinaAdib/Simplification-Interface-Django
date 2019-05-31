@@ -1,49 +1,57 @@
 from django.shortcuts import render
 
 # Create your views here.
-from django.template.loader import get_template
-from django.http import HttpResponse
-from django.template import Context, loader
-from django import forms
-import os
-import numpy as np
-import time
-from simplifier.settings import initializer
+from simplifier.settings import *
 from meowls import *
-from django.views.decorators.csrf import csrf_protect
-
-class CommentForm(forms.Form):
-    name = forms.CharField(initial='class')
-    url = forms.URLField()
-    comment = forms.CharField()
+from complexity_ranker import *
+from django.core.files.storage import FileSystemStorage
 
 
-# LS_path = '/'
-
-# command = 'python3 '+LS_path+'initializeLS.py'
-# os.system(command)
+def get_complexity_scores(sent1 , sent2 , clf):
+  _ , features1= get_complexity_features_sentence(sent1)
+  score1= clf.predict(np.array(features1).reshape(1 , -1))
+  _, features2 = get_complexity_features_sentence(sent2)
+  score2= clf.predict(np.array(features2).reshape(1 , -1))
+  return score1 , score2
 
 def index(request):
     text_input=""
-    context = {}
-
-
     lines = ""
+    context = {}
+    uploaded_file_url = ""
+
+
     Sentence_Simplifier = request.POST.get('SSbtn')
-    print(Sentence_Simplifier)
     Sentence_Summarizer = request.POST.get('summarizebtn')
     Lexical_Simplifier = request.POST.get('LSbtn')
+    clear_all = request.POST.get('clearbtn')
 
-    if Sentence_Simplifier or Sentence_Summarizer or Lexical_Simplifier:
+    if request.POST.get('Upload'):
+        if 'myfile' in request.FILES.keys():
+            myfile = request.FILES['myfile']
+            fs = FileSystemStorage()
+            # filename = fs.save(myfile.name, myfile)
+            # uploaded_file_url = fs.url(filename)
+            for line in myfile:
+                lines+= "".join( chr(x) for x in bytearray(line) )
+            context = {'text_input': lines}#, 'uploaded_file_url':uploaded_file_url}
+            return render(request, 'template.html', context)
+
+
+    elif Sentence_Simplifier or Sentence_Summarizer or Lexical_Simplifier or clear_all:
 
         text_input = request.POST.get('text_input')
-        if text_input is not None:
-            if Sentence_Simplifier:
-                # execute this code
-                print(text_input)
 
+        if clear_all:
+            text_input = ''
+            lines = ''
+
+        elif text_input is not None:
+            text_input = text_input.rstrip('\n')
+            if Sentence_Simplifier:
+                ss_input = '\n'.join(nltk.sent_tokenize(text_input))
                 f = open('model/input.txt', 'w')
-                f.write(text_input)
+                f.write(ss_input)
                 f.close()
                 command = 'python model/nmt/translate.py -model model/sentence_simplifier.pt \
                                      -src model/input.txt\
@@ -55,6 +63,7 @@ def index(request):
 
             elif Sentence_Summarizer:
 
+
                 text_input = request.POST.get('text_input')
                 if text_input is not None:
                     f = open('model/input.txt', 'w')
@@ -63,16 +72,10 @@ def index(request):
                 command = 'python3 model/Summarizer.py model/output.txt 0.4 model/input.txt'
 
                 os.system(command)
-            elif Lexical_Simplifier:
-                subs_rank_nnclf = initializer.subs_rank_nnclf
 
+            elif Lexical_Simplifier:
                 #########################################################
-                substitutions_db = initializer.substitutions_db
-                fivegram_model = initializer.fivegram_model
-                threegram_model = initializer.threegram_model
-                syllable_dict = initializer.syllable_dict
-                wiki_frequency = initializer.wiki_frequency
-                # word2vec = initializer.word2vec
+
                 text_input = request.POST.get('text_input')
                 print("LS input")
                 if text_input is not None:
@@ -81,14 +84,18 @@ def index(request):
                     f.close()
                 # command = 'python3 meowls.py model/output.txt model/input.txt'
                 # os.system(command)
-                rank('model/input.txt', initializer)
-        with open('model/output.txt', 'r') as f:
-            for line in f.readlines():
-                print(line)
-                lines+=line
+                rank('model/input.txt', '/model/output.txt', initializer)
 
-            f.close()
+            with open('model/output.txt', 'r') as f:
+                for line in f.readlines():
+                    print(line)
+                    lines+=line
+
+                f.close()
+        # print(get_complexity_scores(text_input, lines, initializer.complexity_clf))
+
         context = {'text_input': text_input, 'text_output':lines}
+
     return render(request, 'template.html', context)
 
 def summarize(request):

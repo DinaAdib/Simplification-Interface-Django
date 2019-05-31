@@ -9,7 +9,9 @@ import os  # importing os to set environment variable
 from wordfreq import zipf_frequency
 import sys
 from sklearn.preprocessing import maxabs_scale
+from pattern.text.en import referenced
 import pickle
+from nltk import *
 
 
 DIRECTORY = '/home/dina/Semesters/GP/Lexical Simplification/App/simplifier/simplifier/files/'
@@ -32,3 +34,4 @@ def get_similarity_scores(candidates , complex_word):
     # candidate_vec = myword2vec.get_vector(candidate)
     # scores.append(myword2vec.get_cosine_similarity([candidate_vec], [complex_vec]) )
   return maxabs_scale(scores)
+
