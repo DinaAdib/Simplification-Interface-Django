@@ -3,7 +3,14 @@ body, html {
 }
 
 .bg{
-    background: url("simplifier_bg.jpg") no-repeat center center; 
+    background: url("background.jpg") no-repeat center center;
+    -webkit-background-size: 100% 100%;
+    -moz-background-size: 100% 100%;
+    -o-background-size: 100% 100%;
+    background-size: 100% 100%;
+}
+.bg-2{
+    background-image: url("background.jpg") no-repeat center center;
     -webkit-background-size: 100% 100%;
     -moz-background-size: 100% 100%;
     -o-background-size: 100% 100%;
