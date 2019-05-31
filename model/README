@@ -1,6 +1,6 @@
 Files and Folders to include:
 sentence_simplifier.pt
-pred400Hidden.txt      _step_8901.pt
+pred400Hidden.txt      sentence_simplifier.pt
 newselaTestComp.txt  Summarizer.py
 nmt                  Preprocess.py
 __pycache__
