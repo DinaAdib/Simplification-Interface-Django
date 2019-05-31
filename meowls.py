@@ -176,30 +176,29 @@ def get_synonyms_thesaurus(word, thesaurus):
     return True, synonyms
 
 
-def get_candidates(complex_word, db):
-    print("received ", complex_word)
-    candidates = []
+def get_candidates(complex_word):
+    candidates, most_frequent = [], []
+
+    global initializer
+    ppdb_candidates, thesaurus_candidates, wordnet_candidates = [], [], []
     complex_tag_specific = NLP.pos_tag(complex_word)[0][1]
     complex_tag = get_type(complex_tag_specific)
+    ppdb_substitutes = initializer.ppdb_substitutes
+    if complex_word in ppdb_substitutes.keys():
+        ppdb_candidates = ppdb_substitutes[complex_word]
+        candidates.extend(ppdb_candidates)
 
-    ## get synonyms from database
-    if complex_word in db.keys():
-        candidates.extend(db[complex_word])
-        # print("subs found " , db[complex_word])
-    global initializer
+
     mythesaurus = initializer.mythesaurus
-    ## get synonyms from thesaurus
-    found, synonyms = get_synonyms_thesaurus(complex_word, mythesaurus)
-    if found == True:
-        candidates.extend(synonyms)
-    #     get synonyms from api
-    #     candidates.extend(get_synonyms_api(complex_word))
-    #     #print("API found " , getmythesaurus_synonyms_api(complex_word ) )
+    if len(candidates) < 6:
+        # get synonyms from thesaurus
+        found, thesaurus_candidates = get_synonyms_thesaurus(complex_word, mythesaurus)
+        print("Thesaurus subs ", thesaurus_candidates)
+        if found == True:
+            candidates.extend(thesaurus_candidates)
 
-    ## get sunonyms from Word Net
-    wordnet_tag = map_postag(complex_tag)
-    # print("complex tag ", complex_tag)
-    candidates.extend(get_synonyms_wordnet(complex_word, wordnet_tag))
+
+    candidates = candidates[:min(6,len(candidates))]
 
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
@@ -210,12 +209,8 @@ def get_candidates(complex_word, db):
         if stemmer.stem(candidate) != stemmer.stem(complex_word) and lemmatizer.lemmatize(
                 candidate) != lemmatizer.lemmatize(complex_word):
             top_candidates.add(candidate)
-    print(top_candidates)
     return top_candidates
 
-
-# word="circumstance"
-# substitutions_db = load_obj(DIRECTORY + "substitutions")
 
 from pattern.text.en import pluralize, singularize, comparative, superlative
 from pattern.text.en import conjugate
@@ -360,7 +355,7 @@ def get_features(filename, train=True):
                 if train:
                     candidates = [token.strip().split(':')[1] for token in tokens[3:]]
                 else:
-                    candidates = get_candidates(complex_word, substitutions_db)
+                    candidates = get_candidates(complex_word)
 
                 ### Extracting Features
                 cosine_similarities = get_similarity_scores(candidates, complex_word)
@@ -414,7 +409,7 @@ def get_line_features(line):
         # print(complex_word)
         ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
         candidates = [token.strip().split(':')[1] for token in tokens[3:]]
-        our_candidates = get_candidates(complex_word, substitutions_db)
+        our_candidates = get_candidates(complex_word)
         # print(candidates)
 
         ### Extracting Features
@@ -527,7 +522,7 @@ def rank(input_path, output_path,  initializer_x):
                         complex_lm_score = fivegram_model.evaluate_context(sentence, w)
                         word_hit += 1
 
-                        candidates = get_candidates(w, substitutions_db)
+                        candidates = get_candidates(w)
 
                         candidates_pos = list(convert_postag(w, candidates))
                         for c in candidates_pos:
