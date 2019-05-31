@@ -42,6 +42,8 @@ class Initializer:
         self.wiki_frequency = WikiFrequency()
         self.mythesaurus = load_obj(DIRECTORY+"mythesaurus")
         self.word2vec = Word2Vec()
+
+        self.complexity_clf = load_obj(DIRECTORY + "complexity_model")
         elapsed_time = time.time() - start
         print("loaded models in ", elapsed_time)
 

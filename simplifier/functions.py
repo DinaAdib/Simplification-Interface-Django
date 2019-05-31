@@ -22,13 +22,3 @@ def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
-
-
-def get_similarity_scores(candidates , complex_word):
-  # complex_vec = myword2vec.get_vector(complex_word)
-  scores = []
-  for candidate in candidates :
-      scores.append(0.0)
-    # candidate_vec = myword2vec.get_vector(candidate)
-    # scores.append(myword2vec.get_cosine_similarity([candidate_vec], [complex_vec]) )
-  return maxabs_scale(scores)

@@ -61,39 +61,61 @@ def get_synonyms_wordnet(word, pos):
     return [lemma.name() for s in synset for lemma in s.lemmas()]
 
 
+def get_synonyms_thesaurus(word , thesaurus ):
+  if word not in thesaurus:
+      return False, []
+  synonyms_list = thesaurus[word]
+  #print(synonyms_list)
+  synonyms=[]
+  for line in synonyms_list:
+    synonyms.extend(line.split("|")[1:-1])
+  print(synonyms)
+  return True, synonyms
+
+ppdb_substitutes = dict(np.load(DIRECTORY + 'ppdb_candidates_2.7_4.npy', allow_pickle=True).item())
+mythesaurus = load_obj(DIRECTORY + "/mythesaurus")
+
 def get_candidates(complex_word, db):
     print("received ", complex_word)
-    candidates = []
+    candidates, most_frequent = [], []
+
+    filtered_candidates = []
+    ppdb_candidates, thesaurus_candidates, wordnet_candidates = [], [], []
     complex_tag_specific = NLP.pos_tag(complex_word)[0][1]
     complex_tag = get_type(complex_tag_specific)
 
-    ## get synonyms from database
-    if complex_word in db.keys():
-        candidates.extend(db[complex_word])
-        print("subs found " , db[complex_word])
+    if complex_word in ppdb_substitutes.keys():
+        ppdb_candidates = ppdb_substitutes[complex_word]
+        candidates.extend(ppdb_candidates)
+        print("ppdb subs ", ppdb_substitutes[complex_word])
 
-    ## get synonyms from api
-    candidates.extend(get_synonyms_api(complex_word))
-    print("API found " , get_synonyms_api(complex_word ) )
+    # if len(candidates) < 6:
+    #     wordnet_tag = map_postag(complex_tag)
+    #     # print("complex tag ", complex_tag)
+    #     wordnet_candidates = get_synonyms_wordnet(complex_word, wordnet_tag)
+    #     print("wordnet subs ", wordnet_candidates)
+    #     candidates.extend(wordnet_candidates)
 
-    ## get sunonyms from Word Net
-    wordnet_tag = map_postag(complex_tag)
-    print("complex tag ", complex_tag)
-    candidates.extend(get_synonyms_wordnet(complex_word, wordnet_tag))
-    # print("with tag" , wordnet_tag, " worndet found " , get_synonyms_wordnet(complex_word,wordnet_tag) )
-    #     pattern_synset = pwordnet.synsets(complex_word)[0]
-    #     print("patten synset found" , pattern_synset.synonyms)
+    if len(candidates) < 6:
+        # get synonyms from thesaurus
+        found, thesaurus_candidates = get_synonyms_thesaurus(complex_word, mythesaurus)
+        print("Thesaurus subs ", thesaurus_candidates)
+        if found == True:
+            candidates.extend(thesaurus_candidates)
+    candidates = candidates[:min(6,len(candidates))]
 
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
     top_candidates = set()
     for candidate in candidates:
-        # candidate_tag = get_type(NLP.pos_tag(candidate)[0][1])
+        candidate_tag = get_type(NLP.pos_tag(candidate)[0][1])
         # print ( "in function::" ,NLP.pos_tag( candidate ))
         if stemmer.stem(candidate) != stemmer.stem(complex_word) and lemmatizer.lemmatize(
                 candidate) != lemmatizer.lemmatize(complex_word):
             top_candidates.add(candidate)
     return top_candidates
+
+
 
 
 # word="circumstance"

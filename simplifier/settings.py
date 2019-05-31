@@ -36,7 +36,6 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
@@ -77,6 +76,9 @@ ROOT_URLCONF = 'simplifier.urls'
 
 # Find templates in the same folder as settings.py.
 SETTINGS_PATH = os.path.realpath(os.path.dirname(__file__))
+
+MEDIA_ROOT = SETTINGS_PATH+'/media/'
+print(MEDIA_ROOT)
 
 TEMPLATES = [
     {
@@ -136,6 +138,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
