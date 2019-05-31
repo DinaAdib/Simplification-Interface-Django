@@ -7,18 +7,19 @@ Original file is located at
     https://colab.research.google.com/drive/1Bc7GAqq50ZsW_8zQQ8PNje1wJoIodFcS
 """
 
-# from .Substitution_Generator import *
-# from Features.WikiFrequency import *
-# from .Features.Ngram import *
-# dic = pyphen.Pyphen(lang='en')
-# from simplifier import settings
+from nltk.stem import WordNetLemmatizer
+from nltk.stem.porter import *
+
+stemmer = PorterStemmer()
+lemmatizer = WordNetLemmatizer()
 import os
+
 """**lexicon**"""
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 DIRECTORY = BASEDIR + '/simplifier/files/'
 global initializer
 lexicons = {}
-with open(DIRECTORY+"lexicon.tsv") as f:
+with open(DIRECTORY + "lexicon.tsv") as f:
     for line in f:
         (key, val) = line.split()
         lexicons[key.lower()] = val
@@ -41,6 +42,8 @@ from wordfreq import zipf_frequency
 import sys
 from sklearn.preprocessing import maxabs_scale
 import pickle
+from nltk import *
+from pattern.text.en import referenced
 
 
 ######## General Functions ############
@@ -48,28 +51,58 @@ def save_obj(obj, name):
     with open(name + '.pkl', 'wb') as f:
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
+
 def load_obj(name):
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
 
 
+def correct_articles(sentence):
+    sentence_splitted = sentence.split()
+    for i, w in enumerate(sentence_splitted):
+        if w == 'a' or w == 'an':
+            print(sentence_splitted[i + 1].lower()[0])
+            sentence_splitted[i] = referenced(sentence_splitted[i + 1]).split()[0]
+            sentence_splitted[i + 1] = referenced(sentence_splitted[i + 1]).split()[1]
+            # if sentence_splitted[i + 1].lower()[0] in vowels:
+            #     sentence_splitted[i] = 'an'
 
-def get_similarity_scores(candidates , complex_word):
-  # global initializer
-  # myword2vec = initializer.word2vec
-  # complex_vec = myword2vec.get_vector(complex_word)
-  scores = []
-  for candidate in candidates :
-    scores.append(0.0)
-    # candidate_vec = myword2vec.get_vector(candidate)
-    # scores.append(myword2vec.get_cosine_similarity([candidate_vec], [complex_vec]) )
-  return maxabs_scale(scores)
+        # elif w == 'an':
+        #     print(sentence_splitted[i + 1].lower()[0])
+        #     if sentence_splitted[i + 1].lower()[0] not in vowels:
+        #         sentence_splitted[i] = 'a'
+    corrected = ' '.join(sentence_splitted)
+    return corrected
 
+
+def get_continuous_chunks(text):
+    chunked = ne_chunk(pos_tag(word_tokenize(text)))
+    prev = None
+    continuous_chunk = []
+    current_chunk = []
+
+    for i in chunked:
+        if type(i) == Tree:
+            current_chunk.append(" ".join([token for token, pos in i.leaves()]))
+        elif current_chunk:
+            named_entity = " ".join(current_chunk)
+            if named_entity not in continuous_chunk:
+                continuous_chunk.append(named_entity)
+                current_chunk = []
+        else:
+            continue
+    if current_chunk:
+        named_entity = " ".join(current_chunk)
+        if named_entity not in continuous_chunk:
+            continuous_chunk.append(named_entity)
+            current_chunk = []
+    return continuous_chunk
 
 
 #################Substitution Generation##########################
 ################################# SUBSTUTUTION GENERATION ###################################
 from stanfordcorenlp import StanfordCoreNLP
+
 # from functions import *
 
 NLP = StanfordCoreNLP('/home/dina/.local/lib/python3.5/site-packages/stanford-corenlp', lang='en', memory='4g')
@@ -131,6 +164,18 @@ def get_synonyms_wordnet(word, pos):
     return [lemma.name() for s in synset for lemma in s.lemmas()]
 
 
+def get_synonyms_thesaurus(word, thesaurus):
+    if word not in thesaurus:
+        return False, []
+    synonyms_list = thesaurus[word]
+    # print(synonyms_list)
+    synonyms = []
+    for line in synonyms_list:
+        synonyms.extend(line.split("|")[1:-1])
+    print(synonyms)
+    return True, synonyms
+
+
 def get_candidates(complex_word, db):
     print("received ", complex_word)
     candidates = []
@@ -140,29 +185,32 @@ def get_candidates(complex_word, db):
     ## get synonyms from database
     if complex_word in db.keys():
         candidates.extend(db[complex_word])
-        print("subs found " , db[complex_word])
-
-    ## get synonyms from api
-    candidates.extend(get_synonyms_api(complex_word))
-    print("API found " , get_synonyms_api(complex_word ) )
+        # print("subs found " , db[complex_word])
+    global initializer
+    mythesaurus = initializer.mythesaurus
+    ## get synonyms from thesaurus
+    found, synonyms = get_synonyms_thesaurus(complex_word, mythesaurus)
+    if found == True:
+        candidates.extend(synonyms)
+    #     get synonyms from api
+    #     candidates.extend(get_synonyms_api(complex_word))
+    #     #print("API found " , getmythesaurus_synonyms_api(complex_word ) )
 
     ## get sunonyms from Word Net
     wordnet_tag = map_postag(complex_tag)
-    print("complex tag ", complex_tag)
+    # print("complex tag ", complex_tag)
     candidates.extend(get_synonyms_wordnet(complex_word, wordnet_tag))
-    # print("with tag" , wordnet_tag, " worndet found " , get_synonyms_wordnet(complex_word,wordnet_tag) )
-    #     pattern_synset = pwordnet.synsets(complex_word)[0]
-    #     print("patten synset found" , pattern_synset.synonyms)
 
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
     top_candidates = set()
     for candidate in candidates:
-        # candidate_tag = get_type(NLP.pos_tag(candidate)[0][1])
+        candidate_tag = get_type(NLP.pos_tag(candidate)[0][1])
         # print ( "in function::" ,NLP.pos_tag( candidate ))
         if stemmer.stem(candidate) != stemmer.stem(complex_word) and lemmatizer.lemmatize(
                 candidate) != lemmatizer.lemmatize(complex_word):
             top_candidates.add(candidate)
+    print(top_candidates)
     return top_candidates
 
 
@@ -188,26 +236,21 @@ def convert_postag(complex_word, candidates):
                 # print("pluraaal  ", candidate)
             elif specific_tag == "NN" and candidate_tag == "NNS":
                 candidate = singularize(candidate)
-                # print("singulaaar" , candidate)
-            # print("wwilll add")
             final_candidates.add(candidate)
     elif generic_tag == "ADJ":  ## Adjectives
         for candidate in candidates:
             candidate_tag = NLP.pos_tag(candidate)[0][1]
             if specific_tag == "JJR" and candidate_tag != "JJR":
                 candidate = comparative(candidate)
-                # print(candidate , "jjr")
             elif specific_tag == "JJS" and candidate_tag != "JJS":
-                # print(candidate , "jjs")
                 candidate = superlative(candidate)
-            # print(candidate , "added")
+
             final_candidates.add(candidate)
     elif generic_tag == "VB":  ## Verbs
         complex_tense = tenses(complex_word)
         if (len(complex_tense)) < 1: return candidates
 
         for candidate in candidates:
-            # print("my tense" ,  complex_tense.upper()  ," candidate " , candidate , " ", tenses(candidate)[0][0] )
             if len(tenses(candidate)) > 0 and tenses(candidate)[0][0] != complex_tense:
                 if complex_tense == "past":
                     candidate = conjugate(candidate, tense=PAST)
@@ -224,249 +267,230 @@ def convert_postag(complex_word, candidates):
     return final_candidates
 
 
+FEATURES_COUNT = 8
 
-FEATURES_COUNT= 8
-# print("loaded models")
-
-# scaler = StandardScaler()
-# myword2vec = Word2Vec()
-# print("loaded word2vec")
-# np.save("word2vec", myword2vec)
-
-def get_similarity_scores(candidates , complex_word):
-    # global initializer
-    # myword2vec = initializer.word2vec
-    # complex_vec = myword2vec.get_vector(complex_word)
+def get_similarity_scores(candidates, complex_word):
+    global initializer
+    myword2vec = initializer.word2vec
+    complex_vec = myword2vec.get_vector(complex_word)
     scores = []
-    for candidate in candidates :
-        scores.append(0.0)
-        # candidate_vec = myword2vec.get_vector(candidate)
-        # scores.append(myword2vec.get_cosine_similarity([candidate_vec], [complex_vec]) )
+    for candidate in candidates:
+        candidate_vec = myword2vec.get_vector(candidate)
+        scores.append(myword2vec.get_cosine_similarity([candidate_vec], [complex_vec]))
     return maxabs_scale(scores)
 
-def get_ngram_scores(candidates , complex_word , sentence , model):
-  scores = []
-  sentence = sentence.lower()
-  complex_word = re.sub(r'[^a-zA-Z0-9\s]', ' ', complex_word)
-  for candidate in candidates:
-    candidate = re.sub(r'[^a-zA-Z0-9\s]', ' ', candidate)
-    scores.append(model.get_score(sentence.split(), complex_word.lower(), candidate.lower()))
 
-  #print(scores)
-  return maxabs_scale(scores)
+def get_ngram_scores(candidates, complex_word, sentence, model):
+    scores = []
+    sentence = sentence.lower()
+    complex_word = re.sub(r'[^a-zA-Z0-9\s]', ' ', complex_word)
+    for candidate in candidates:
+        candidate = re.sub(r'[^a-zA-Z0-9\s]', ' ', candidate)
+        scores.append(model.get_score(sentence.split(), complex_word.lower(), candidate.lower()))
+
+    return maxabs_scale(scores)
+
 
 def get_lexicon_scores(candidates):
-  scores = []
-  for candidate in candidates:
-    if candidate.lower() in lexicons:
-      scores.append( float(lexicons[candidate.lower()]) )
-    else :
-      scores.append(2.5) ## average word
-  return maxabs_scale(scores)
+    scores = []
+    for candidate in candidates:
+        if candidate.lower() in lexicons:
+            scores.append(float(lexicons[candidate.lower()]))
+        else:
+            scores.append(2.5)  ## average word
+    return maxabs_scale(scores)
+
 
 def get_syllable_counts(candidates):
-  scores = []
-  global initializer
-  syllable_dict = initializer.syllable_dict
+    scores = []
+    global initializer
+    syllable_dict = initializer.syllable_dict
 
-  for candidate in candidates:
-    scores.append( syllable_dict.inserted(candidate).count('-') + 1)
-  return maxabs_scale(scores)
+    for candidate in candidates:
+        scores.append(syllable_dict.inserted(candidate).count('-') + 1)
+    return maxabs_scale(scores)
+
 
 def get_character_counts(candidates):
-  scores = []
-  for candidate in candidates:
-    scores.append( len(candidate) )
-  return maxabs_scale(scores)
+    scores = []
+    for candidate in candidates:
+        scores.append(len(candidate))
+    return maxabs_scale(scores)
+
 
 def get_frequencies(candidates):
-  scores = []
-
-  global initializer
-  wiki_frequency = initializer.wiki_frequency
-  for candidate in candidates:
-    scores.append( wiki_frequency.get_feature( candidate.lower() ) )
-  return maxabs_scale(scores)
+    scores = []
+    global initializer
+    wiki_frequency = initializer.wiki_frequency
+    for candidate in candidates:
+        scores.append(wiki_frequency.get_feature(candidate.lower()))
+    return maxabs_scale(scores)
 
 
 def get_wiki_frequencies(candidates):
-  scores = []
-  for candidate in candidates:
-    scores.append( zipf_frequency(candidate.lower(),  'en') )
-  return maxabs_scale(scores)
+    scores = []
+    for candidate in candidates:
+        scores.append(zipf_frequency(candidate.lower(), 'en'))
+    return maxabs_scale(scores)
 
 
-def get_features(filename , train= True):
+def get_features(filename, train=True):
+    all_features = np.zeros(FEATURES_COUNT)
+    all_ranks = []
+    all_lines = []
+    all_words = []
 
-  all_features = np.zeros(FEATURES_COUNT)
-  all_ranks = []
-  all_lines = []
-  all_words = []
+    global initializer
+    substitutions_db = initializer.substitutions_db
+    fivegram_model = initializer.fivegram_model
+    threegram_model = initializer.threegram_model
+    with open(DIRECTORY + filename) as file:
+        corpus = file.read()
+        lines = corpus.split("\n")
+        increment = 0
+        for line in lines:
+            try:
+                increment += 1
+                ### Processing line
+                tokens = line.strip().split('\t')
+                sentence = tokens[0].strip()
+                complex_word = tokens[1].strip()
+                # print(complex_word)
+                ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
+                if train:
+                    candidates = [token.strip().split(':')[1] for token in tokens[3:]]
+                else:
+                    candidates = get_candidates(complex_word, substitutions_db)
 
-  global initializer
-  substitutions_db = initializer.substitutions_db
-  fivegram_model = initializer.fivegram_model
-  threegram_model = initializer.threegram_model
-  with open(DIRECTORY+filename) as file:
-      corpus = file.read()
-      lines= corpus.split("\n")
-      increment = 0
-      for line in lines :
-        try:
-          increment += 1
-          #print(line)
-          ### Processing line
-          tokens = line.strip().split('\t')
-          sentence = tokens[0].strip()
-          complex_word = tokens[1].strip()
-          #print(complex_word)
-          ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
-          if train :
-            candidates = [token.strip().split(':')[1] for token in tokens[3:]]
-          else:
-            candidates = get_candidates(complex_word , substitutions_db)
-          #print(candidates)
+                ### Extracting Features
+                cosine_similarities = get_similarity_scores(candidates, complex_word)
+                fivegram_scores = get_ngram_scores(candidates, complex_word, sentence, fivegram_model)
+                threegram_scores = get_ngram_scores(candidates, complex_word, sentence, threegram_model)
+                lexicon_scores = get_lexicon_scores(candidates)
+                syllables = get_syllable_counts(candidates)
+                characters = get_character_counts(candidates)
+                frequencies = get_frequencies(candidates)
+                wiki_frequencies = get_wiki_frequencies(candidates)
+            except:
+                print("************** BIG ERROR OCCURED")
+                continue
 
-          ### Extracting Features
-          cosine_similarities = get_similarity_scores(candidates , complex_word)
-          fivegram_scores = get_ngram_scores(candidates , complex_word , sentence , fivegram_model)
-          threegram_scores = get_ngram_scores(candidates , complex_word , sentence , threegram_model)
-          lexicon_scores = get_lexicon_scores(candidates)
-          syllables = get_syllable_counts( candidates )
-          characters = get_character_counts( candidates)
-          frequencies = get_frequencies( candidates)
-          wiki_frequencies = get_wiki_frequencies ( candidates)
-        except:
-          print("************** BIG ERROR OCCURED")
-          continue
+            ## No error so we will append
+            for i in range(len(candidates)):
+                all_lines.append(sentence)
+                all_words.append(candidates[i])
+            features = np.column_stack((cosine_similarities, fivegram_scores, threegram_scores, lexicon_scores,
+                                        syllables, characters, frequencies, wiki_frequencies))
+            all_ranks.extend(ranks)
+            all_features = np.vstack((all_features, features))
 
-        ## No error so we will append
-        for i in range(len(candidates)) :
-          all_lines.append(sentence)
-          all_words.append(candidates[i])
-        features = np.column_stack( (cosine_similarities , fivegram_scores , threegram_scores, lexicon_scores ,syllables , characters , frequencies , wiki_frequencies ) )
-        all_ranks.extend(ranks)
-        all_features= np.vstack((all_features , features))
+            if increment > 40000:
+                increment = 0
+                np.save(DIRECTORY + "_meow_ftrs" + str(increment), all_features[1:len(all_features)])
+                np.save(DIRECTORY + "_meow_ranks" + str(increment), all_ranks)
+                np.save(DIRECTORY + "_meow_lines" + str(increment), all_lines)
+                np.save(DIRECTORY + "_meow_words" + str(increment), all_words)
 
-        if increment > 40000:
-          print("lines", len(all_lines))
-          print("features: ", all_features.shape)
-          print("finisheeeedd ",increment)
-          increment = 0
-          np.save(DIRECTORY+"_meow_ftrs"+str(increment) , all_features[1:len(all_features)])
-          np.save(DIRECTORY+"_meow_ranks"+str(increment) , all_ranks)
-          np.save(DIRECTORY+"_meow_lines"+str(increment) , all_lines)
-          np.save(DIRECTORY+"_meow_words"+str(increment) , all_words)
-
-
-
-      print("finallly " , np.array(all_features).shape)
-      return all_features[1:len(all_features)] , all_ranks , all_lines , all_words
+        return all_features[1:len(all_features)], all_ranks, all_lines, all_words
 
 
 """**Classifier**"""
 
 """# Full Model"""
 
-def get_line_features(line ):
 
+def get_line_features(line):
+    global initializer
+    substitutions_db = initializer.substitutions_db
+    fivegram_model = initializer.fivegram_model
+    threegram_model = initializer.threegram_model
+    try:
+        # print(line)
 
-  global initializer
-  substitutions_db = initializer.substitutions_db
-  fivegram_model = initializer.fivegram_model
-  threegram_model = initializer.threegram_model
-  try:
-  #print(line)
+        ### Processing line
+        tokens = line.strip().split('\t')
+        sentence = tokens[0].strip()
+        complex_word = tokens[1].strip()
+        # print(complex_word)
+        ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
+        candidates = [token.strip().split(':')[1] for token in tokens[3:]]
+        our_candidates = get_candidates(complex_word, substitutions_db)
+        # print(candidates)
 
-    ### Processing line
-    tokens = line.strip().split('\t')
-    sentence = tokens[0].strip()
-    complex_word = tokens[1].strip()
-    #print(complex_word)
-    ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
-    candidates = [token.strip().split(':')[1] for token in tokens[3:]]
-    our_candidates = get_candidates(complex_word , substitutions_db)
-    #print(candidates)
+        ### Extracting Features
+        cosine_similarities = get_similarity_scores(candidates, complex_word)
+        fivegram_scores = get_ngram_scores(candidates, complex_word, sentence, fivegram_model)
+        threegram_scores = get_ngram_scores(candidates, complex_word, sentence, threegram_model)
+        lexicon_scores = get_lexicon_scores(candidates)
+        syllables = get_syllable_counts(candidates)
+        characters = get_character_counts(candidates)
+        frequencies = get_frequencies(candidates)
+        wiki_frequencies = get_wiki_frequencies(candidates)
+    except:
+        print("************** BIG ERROR OCCURED")
+        return False, None, None, None, None, None
 
-    ### Extracting Features
-    cosine_similarities = get_similarity_scores(candidates , complex_word)
-    fivegram_scores = get_ngram_scores(candidates , complex_word , sentence , fivegram_model)
-    threegram_scores = get_ngram_scores(candidates , complex_word , sentence , threegram_model)
-    lexicon_scores = get_lexicon_scores(candidates)
-    syllables = get_syllable_counts( candidates )
-    characters = get_character_counts( candidates)
-    frequencies = get_frequencies( candidates)
-    wiki_frequencies = get_wiki_frequencies ( candidates)
-  except:
-    print("************** BIG ERROR OCCURED")
-    return False, None , None , None , None , None
+    ## No error
+    features = np.column_stack((cosine_similarities, fivegram_scores, threegram_scores, lexicon_scores, syllables,
+                                characters, frequencies, wiki_frequencies))
 
-  ## No error
-  features = np.column_stack( (cosine_similarities , fivegram_scores , threegram_scores, lexicon_scores ,syllables , characters , frequencies , wiki_frequencies ) )
-
-  return True , features , our_candidates , candidates, ranks , complex_word
+    return True, features, our_candidates, candidates, ranks, complex_word
 
 
 def preprocess_line(line):
-  try:
-    tokens = line.strip().split('\t')
-    sentence = tokens[0].strip()
-    sentence =  re.sub(r'[^a-zA-Z0-9\s]', ' ', sentence )
-    complex_word = tokens[1].strip()
-    #print(complex_word)
-    ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
-    candidates = [token.strip().split(':')[1] for token in tokens[3:]]
-  except:
-    print("SOMETHING WRING ")
-    return None , None , None , None
-  return sentence, candidates, ranks , complex_word
+    try:
+        tokens = line.strip().split('\t')
+        sentence = tokens[0].strip()
+        sentence = re.sub(r'[^a-zA-Z0-9\s]', ' ', sentence)
+        complex_word = tokens[1].strip()
+        # print(complex_word)
+        ranks = [int(token.strip().split(':')[0]) for token in tokens[3:]]
+        candidates = [token.strip().split(':')[1] for token in tokens[3:]]
+    except:
+        print("SOMETHING WRING ")
+        return None, None, None, None
+    return sentence, candidates, ranks, complex_word
+
 
 def preprocess_interface_line(line):
-  try:
-    # sentence = line.strip().split('')
-    # print("SENTENCE ",sentence)
-    # sentence = tokens[0].strip()
-    sentence =  re.sub(r'[^a-zA-Z0-9\s]', ' ', line )
-    complex_word = ""
-    #print(complex_word)
-    ranks = []
-    candidates = []
-  except:
-    print("SOMETHING WRING ")
-    return None , None , None , None
-  return sentence, candidates, ranks , complex_word
-
-def get_candidates_features(candidates , sentence , complex_word):
+    try:
+        # sentence = line.strip().split('')
+        # print("SENTENCE ",sentence)
+        # sentence = tokens[0].strip()
+        sentence = re.sub(r'[^a-zA-Z0-9\s]', ' ', line)
+        complex_word = ""
+        # print(complex_word)
+        ranks = []
+        candidates = []
+    except:
+        print("SOMETHING WRING ")
+        return None, None, None, None
+    return sentence, candidates, ranks, complex_word
 
 
-  global initializer
-  fivegram_model = initializer.fivegram_model
-  threegram_model = initializer.threegram_model
-  try:
-    cosine_similarities = get_similarity_scores(candidates , complex_word)
-    fivegram_scores = get_ngram_scores(candidates , complex_word , sentence , fivegram_model)
-    threegram_scores = get_ngram_scores(candidates , complex_word , sentence , threegram_model)
-    lexicon_scores = get_lexicon_scores(candidates)
-    syllables = get_syllable_counts( candidates )
-    characters = get_character_counts( candidates)
-    frequencies = get_frequencies( candidates)
-    wiki_frequencies = get_wiki_frequencies ( candidates)
-  except:
-    print("************** BIG ERROR OCCURED")
-    return False, None ,
+def get_candidates_features(candidates, sentence, complex_word):
+    global initializer
+    fivegram_model = initializer.fivegram_model
+    threegram_model = initializer.threegram_model
+    try:
+        cosine_similarities = get_similarity_scores(candidates, complex_word)
+        fivegram_scores = get_ngram_scores(candidates, complex_word, sentence, fivegram_model)
+        threegram_scores = get_ngram_scores(candidates, complex_word, sentence, threegram_model)
+        lexicon_scores = get_lexicon_scores(candidates)
+        syllables = get_syllable_counts(candidates)
+        characters = get_character_counts(candidates)
+        frequencies = get_frequencies(candidates)
+        wiki_frequencies = get_wiki_frequencies(candidates)
+    except:
+        print("************** BIG ERROR OCCURED")
+        return False, None,
 
-  ## No error
-  features = np.column_stack( (cosine_similarities , fivegram_scores , threegram_scores, lexicon_scores ,syllables , characters , frequencies , wiki_frequencies ) )
+    features = np.column_stack((cosine_similarities, fivegram_scores, threegram_scores, lexicon_scores, syllables,
+                                characters, frequencies, wiki_frequencies))
 
-  return True , features
+    return True, features
 
-# from sklearn.model_selection import train_test_split
-# from sklearn.neural_network import MLPClassifier
-# from scipy.stats import pearsonr
-# from sklearn.preprocessing import StandardScaler
-
-
-total_count =  0
+total_count = 0
 total_words_count = 0
 ratio = 0
 pos_ratio = 0
@@ -475,7 +499,7 @@ pos_hit = 0
 all_ratios = []
 
 
-def rank(input_path, initializer_x):
+def rank(input_path, output_path,  initializer_x):
     global initializer
     initializer = initializer_x
     subs_rank_nnclf = initializer.subs_rank_nnclf
@@ -483,24 +507,22 @@ def rank(input_path, initializer_x):
     #########################################################
     substitutions_db = initializer.substitutions_db
     fivegram_model = initializer.fivegram_model
-    threegram_model = initializer.threegram_model
     # word2vec = initializer.word2vec
-    syllable_dict = initializer.syllable_dict
-    wiki_frequency = initializer.wiki_frequency
     print("Ranking")
     word_hit = 0
     test_lines = open(input_path).readlines()
-    with open(BASEDIR + "/model/output.txt", "w") as f:
+    with open(BASEDIR + output_path, "w") as f:
         for line in test_lines:
             sentence, candidates, ranks, complex_word = preprocess_interface_line(line)
             # print(sentence)
             print(complex_word)
-            if sentence is not None:
-                replacements = {}
-                original = sentence
+
+            simplified = line
+            if sentence is not None and sentence != "":
+                named_entities = get_continuous_chunks(sentence)
                 for w in sentence.split():
-                    if (w in lexicons and float(lexicons[w]) > 3.0) or zipf_frequency(w, 'en') <= 4:
-                        # print(w , "freq  ", zipf_frequency(w , 'en'))
+                    if (w[0].isupper() == False and w != (sentence.split())[0]) and (w not in named_entities) and (
+                            (w in lexicons and float(lexicons[w]) > 3.0) or zipf_frequency(w, 'en') <= 4.2):
 
                         complex_lm_score = fivegram_model.evaluate_context(sentence, w)
                         word_hit += 1
@@ -508,56 +530,42 @@ def rank(input_path, initializer_x):
                         candidates = get_candidates(w, substitutions_db)
 
                         candidates_pos = list(convert_postag(w, candidates))
-
-                        feat_t = time.time()
+                        for c in candidates_pos:
+                            if zipf_frequency(c, 'en') < zipf_frequency(w, 'en'):
+                                candidates_pos.remove(c)
+                        print("Final candidates ", candidates_pos)
                         indicator, candidates_features = get_candidates_features(candidates_pos, sentence, w)
 
-                        # print(np.array(candidates_features).shape)
                         if indicator == True:
                             candidate_predictions = subs_rank_nnclf.predict(candidates_features)
                             #         best_candidates =candidates_pos[np.argmin(candidate_predictions)]  B3DEEEN
                             #         print(best_candidates)
+
+                            print("Best ranks ", candidate_predictions)
                             min_frequency = 10
-                            best_of_best = w
+                            best_candidate = w
                             min_context = complex_lm_score
-                            for cindex, best in enumerate(candidates_pos):
+                            for cindex, candidate in enumerate(candidates_pos):
                                 if candidate_predictions[cindex] == min(candidate_predictions):
-                                    freq_diff = zipf_frequency(best, 'en') - zipf_frequency(w, 'en')
-                                    word_lm_score = fivegram_model.evaluate_context(sentence.replace(w, best), best)
-                                    if freq_diff > 0 and freq_diff < min_frequency and word_lm_score > min_context:
-                                        min_frquency = freq_diff
-                                        best_of_best = best
-                                        # print("best of best updated with", best_of_best)
-                            sentence = sentence.replace(w, best_of_best)
-                            replacements[w] = best_of_best
-                original = sentence
-                for our_complex, our_simple in replacements.items():
-                    sentence = sentence.replace(our_complex, our_simple)
+                                    freq_diff = zipf_frequency(lemmatizer.lemmatize(candidate), 'en') - zipf_frequency(
+                                        lemmatizer.lemmatize(w), 'en')
+                                    word_lm_score = fivegram_model.evaluate_context(sentence.replace(w, candidate),
+                                                                                    candidate)
+                                    if freq_diff > 0 and freq_diff < min_frequency:# and word_lm_score > min_context:
+                                        min_frequency = freq_diff
+                                        best_candidate = candidate
+                            simplified = simplified.replace(w, best_candidate, 1)
+                simplified = correct_articles(simplified)
                 # print(" sentence simplified: " , sentence.replace(w, best_of_best ) )
                 # f.write("<original> ")
                 # f.write(original)
                 # f.write("\n<simplified> ")
-                f.write(sentence)
+                f.write(simplified)
                 f.write("\n")
     f.close()
-import time
-
 
 if __name__ == "__main__":
     # outputFile = open(str(sys.argv[1]), 'w+')
     inputPath = str(sys.argv[2])
-    # start_time = time.time()
+    # inputPath = 'files/BenchLS.test.txt'
     rank(str(inputPath))
-    # elapsed_time = time.time() - start_time
-    # print("Elapsed time = ", elapsed_time)
-    # outputFile.write(output)
-    # rank(DIRECTORY+'BenchLS.test.txt')
-
-    # input_word = "dream"
-    #
-    # new_instance = Thesaurus(input_word)
-
-    # Get the synonyms according to part of speech
-    # Default part of speech is noun
-
-    # print(new_instance.get_synonym())
