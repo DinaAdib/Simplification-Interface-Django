@@ -1,1 +1,1 @@
-Simplification Interface in Django
+Our bachelor's graduation project. It's a system that simplifies English Text on both the lexical and syntactic levels and also summarizes it. For Syntactic Simplification, it utilizes RNN trained on Newsela Dataset , while Lexical Simplification is based on a Machine Learning Model trained on BenchLS. The summarizer is rule-based.
